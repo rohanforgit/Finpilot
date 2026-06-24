@@ -277,7 +277,7 @@ function HeroContent() {
       </p>
       <div className="flex pointer-events-auto flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-3">
         <Link href="/login" className="bg-accent hover:bg-accent/80 text-[#09090b] font-bold py-2 sm:py-3 px-6 sm:px-8 rounded-full transition duration-300 w-full sm:w-auto border border-accent/20 text-center flex items-center justify-center shadow-lg shadow-accent/15">
-          Launch Sandbox
+          Get Started
         </Link>
         <Link href="/login" className="pointer-events-auto bg-[#0009] border border-gray-600 hover:border-gray-400 text-gray-200 hover:text-white font-medium py-2 sm:py-3 px-6 sm:px-8 rounded-full transition duration-300 flex items-center justify-center w-full sm:w-auto text-center">
           <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-accent animate-pulse" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -391,15 +391,14 @@ function Navbar() {
             </div>
 
             <Link href="/login" className={navLinkClass('pricing')} onMouseEnter={() => handleMouseEnterNavItem('pricing')} onMouseLeave={handleMouseLeaveNavItem}>
-                Free Sandbox
+                Pricing
             </Link>
           </div>
         </div>
 
         <div className="flex items-center space-x-4 md:space-x-6">
-          <span className="hidden md:block text-accent text-xs font-semibold uppercase tracking-wider bg-accent/5 px-2.5 py-1 rounded border border-accent/20">Sandbox Mode</span>
           <Link href="/login" className="hidden sm:block text-gray-300 hover:text-white text-sm">Sign In</Link>
-          <Link href="/login" className="bg-accent hover:bg-accent/80 text-[#09090b] font-bold py-2 px-5 rounded-full text-sm border border-accent/20 text-center flex items-center justify-center shadow-lg shadow-accent/15" style={{ backdropFilter: 'blur(8px)' }}>Launch Sandbox</Link>
+          <Link href="/login" className="bg-accent hover:bg-accent/80 text-[#09090b] font-bold py-2 px-5 rounded-full text-sm border border-accent/20 text-center flex items-center justify-center shadow-lg shadow-accent/15" style={{ backdropFilter: 'blur(8px)' }}>Get Started</Link>
           <button className="lg:hidden text-white p-2" onClick={toggleMobileMenu} aria-label="Toggle mobile menu">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} /></svg>
           </button>
@@ -445,7 +444,7 @@ function Navbar() {
               <Link href="/login" className="block text-gray-300 hover:text-gray-100 text-sm py-1 transition duration-150" onClick={toggleMobileMenu}>Database Schema</Link>
             </div>
           </div>
-          <Link href="/login" className="text-gray-300 hover:text-gray-100 text-sm py-2 transition duration-150" onClick={toggleMobileMenu}>Free Sandbox</Link>
+          <Link href="/login" className="text-gray-300 hover:text-gray-100 text-sm py-2 transition duration-150" onClick={toggleMobileMenu}>Get Started</Link>
           <Link href="/login" className="text-gray-300 hover:text-gray-100 text-sm py-2 transition duration-150" onClick={toggleMobileMenu}>Sign In</Link>
         </div>
       </div>

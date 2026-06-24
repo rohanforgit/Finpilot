@@ -1,20 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
 import { Asset, Liability, IncomeSource, Expense, Goal, GoalContribution, BudgetPlan, Obligation, OcrUpload, AiReport, Feedback, Profile } from "@/types";
+import { supabase } from "./supabase";
 
-// Check environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const isSupabaseConfigured =
-  supabaseUrl !== "" &&
-  supabaseUrl !== "https://your-project-id.supabase.co" &&
-  supabaseAnonKey !== "" &&
-  !supabaseAnonKey.startsWith("sb_publishable_");
+const isSupabaseConfigured = supabase !== null;
 
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
 
 // File-based Mock Database Path (Stored inside workspace)
 const MOCK_DB_PATH = path.join(process.cwd(), "src", "lib", "mockDb.json");
@@ -305,7 +295,7 @@ export const db = {
 
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile> {
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from("profiles").update(updates).eq("id", userId).select().single();
+      const { data, error } = await supabase.from("profiles").upsert({ id: userId, ...updates, updated_at: new Date().toISOString() }).select().single();
       if (!error && data) return data;
     }
     const mockDb = getMockDb();

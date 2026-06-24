@@ -372,8 +372,27 @@ export const ai = {
   },
 
   // Live Chat advisor
-  async chatWithCoach(prompt: string, question: string): Promise<{ answer: string }> {
+  async chatWithCoach(
+    context: any,
+    question: string,
+    history: string
+  ): Promise<{ answer: string }> {
     if (GEMINI_API_KEY || GROQ_API_KEY || OPENAI_API_KEY) {
+      const prompt = `You are a premium FinPilot AI financial coach advisor.
+The user is asking you a question. Here is their current financial snapshot context:
+${JSON.stringify(context, null, 2)}
+
+Here is the chat history:
+${history}
+
+User's Question: "${question}"
+
+Output a valid JSON response containing ONLY:
+{
+  "answer": "Your sophisticated, premium financial guidance or advice in Markdown format. Keep it concise, professional, and data-backed using their context when appropriate."
+}
+Output ONLY raw JSON matching this schema.`;
+
       try {
         const { data } = await executeWithFallback(prompt);
         return data;

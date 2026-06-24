@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { getDashboardData } from "@/app/actions/finance";
 import { formatINR } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -35,7 +36,6 @@ const NAV_ITEMS = [
   { name: "Obligations", href: "/obligations", icon: Calendar },
   { name: "AI Coach", href: "/coach", icon: Sparkles },
   { name: "Profile & Income", href: "/profile", icon: User },
-  { name: "Admin Console", href: "/admin", icon: ShieldCheck },
 ];
 
 export default function Sidebar() {
@@ -57,9 +57,24 @@ export default function Sidebar() {
       }
     }
     loadStats();
+    
+    // Auth state listener to sync cookies
+    const { data: { subscription } } = supabase
+      ? supabase.auth.onAuthStateChange((event, session) => {
+          if (session?.user) {
+            document.cookie = `finpilot-user-id=${session.user.id}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax; Secure`;
+          } else if (event === "SIGNED_OUT") {
+            document.cookie = "finpilot-user-id=; path=/; max-age=0";
+          }
+        })
+      : { data: { subscription: null } };
+
     // Refresh stats when the page pathname changes to capture fresh entries
     const interval = setInterval(loadStats, 4000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      subscription?.unsubscribe();
+    };
   }, [pathname]);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
@@ -103,18 +118,6 @@ export default function Sidebar() {
             </Link>
           </div>
 
-          {/* Quick Mode Indicator Badge */}
-          <div className="px-6 mt-4">
-            <div className={`flex items-center justify-between text-[10px] px-3 py-1.5 rounded-full font-medium ${
-              isMock ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-success/10 text-success border border-success/20"
-            }`}>
-              <span className="flex items-center gap-1.5">
-                <span className={`h-1.5 w-1.5 rounded-full ${isMock ? "bg-amber-400 animate-pulse" : "bg-success"}`} />
-                {isMock ? "Demo Local JSON" : "Supabase Live Connected"}
-              </span>
-              <ChevronRight className="h-3 w-3 opacity-60" />
-            </div>
-          </div>
 
           {/* Nav Items */}
           <nav className="px-4 py-6 space-y-1">

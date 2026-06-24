@@ -3,12 +3,18 @@
 import { db } from "@/lib/db";
 import { ai } from "@/lib/ai";
 import { calculateFinancialHealthScore } from "@/lib/utils";
+import { cookies } from "next/headers";
 
 const DEMO_USER_ID = "demo-user-id";
 
+async function getActiveUserId(): Promise<string> {
+  const cookieStore = await cookies();
+  return cookieStore.get("finpilot-user-id")?.value || DEMO_USER_ID;
+}
+
 // Trigger new AI financial coaching report generation
 export async function generateNewCoachReport() {
-  const userId = DEMO_USER_ID;
+  const userId = await getActiveUserId();
 
   // 1. Gather all database states
   const profile = await db.getProfile(userId);
@@ -27,7 +33,7 @@ export async function generateNewCoachReport() {
   const healthScore = calculateFinancialHealthScore(incomes, expenses, assets, liabilities, obligations);
 
   // Approximate prompts contents for admin tracking
-  const promptSummary = `Generate coaching report for user Aaron. Incomes: ${incomes.length}, Liabilities: ${liabilities.length}, Expenses Count: ${expenses.length}`;
+  const promptSummary = `Generate coaching report for user. Incomes: ${incomes.length}, Liabilities: ${liabilities.length}, Expenses Count: ${expenses.length}`;
 
   // 2. Query Gemini/Mock AI
   const reportData = await ai.generateFinancialCoachReport(
@@ -61,7 +67,7 @@ export async function generateNewCoachReport() {
 
 // Fetch past coach reports
 export async function getPastCoachReports() {
-  const userId = DEMO_USER_ID;
+  const userId = await getActiveUserId();
   const reports = await db.getAiReports(userId);
   return {
     reports,
@@ -71,7 +77,7 @@ export async function getPastCoachReports() {
 
 // Ask live question to Coach
 export async function askCoachLiveQuestion(question: string, chatHistory: { role: 'user' | 'assistant', content: string }[]) {
-  const userId = DEMO_USER_ID;
+  const userId = await getActiveUserId();
 
   // 1. Gather all database states for full context
   const profile = await db.getProfile(userId);
@@ -125,7 +131,7 @@ export async function askCoachLiveQuestion(question: string, chatHistory: { role
 
   const formattedContext = {
     user: {
-      name: profile?.full_name || "Aarav Sharma",
+      name: profile?.full_name || "New User",
       health_score: profile?.health_score || 80
     },
     incomes: incomes.map(i => ({ name: i.source_name, amount: i.amount, frequency: i.frequency })),
@@ -138,49 +144,23 @@ export async function askCoachLiveQuestion(question: string, chatHistory: { role
 
   const historyText = chatHistory.map(m => `${m.role === 'user' ? 'User' : 'Coach'}: ${m.content}`).join('\n');
 
-  const prompt = `You are a premium luxury Financial Coach in FinPilot AI.
-  Here is the user's current complete financial profile context:
-  ${JSON.stringify(formattedContext, null, 2)}
+  // 2. Query AI model (Compiling the prompt to include exact user balance parameters)
+  const aiResult = await ai.chatWithCoach(formattedContext, question, historyText);
+  const answer = aiResult.answer;
 
-  Chat History:
-  ${historyText}
+  // 3. Save report output in database to log telemetry audit trails
+  await db.saveAiReport(
+    userId,
+    "adhoc",
+    profile?.health_score || 80,
+    { question, answer },
+    `Live Advisory Question: "${question.slice(0, 45)}..."`,
+    JSON.stringify({ question, answer })
+  );
 
-  User's live question: "${question}"
-
-  Instructions:
-  1. Provide a direct, short, highly professional, and encouraging response tailored exactly to their numbers.
-  2. Keep it under 2-3 sentences. Focus on clarity and high financial acumen.
-  3. Use Indian Rupee (₹) currency notations.
-  4. Respond in standard text. Output a JSON object matching this schema:
-  {
-    "answer": "your natural language text response"
-  }
-  `;
-
-  try {
-    const res = await ai.chatWithCoach(prompt, question);
-
-    // Save live advisory chat to prompts audit trail
-    await db.saveAiReport(
-      userId,
-      "adhoc",
-      profile?.health_score || 80,
-      { question, answer: res.answer, isLiveChat: true },
-      `Live Chat: "${question}"`,
-      JSON.stringify({ answer: res.answer })
-    );
-
-    return {
-      success: true,
-      answer: res.answer,
-      isMockAI: ai.isMock
-    };
-  } catch (err: any) {
-    console.error("Coaching chat action failed:", err);
-    return {
-      success: false,
-      answer: "I ran into an issue while analyzing your live portfolio details. Please try asking again.",
-      isMockAI: ai.isMock
-    };
-  }
+  return {
+    success: true,
+    answer,
+    isMockAI: ai.isMock
+  };
 }

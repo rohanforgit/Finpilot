@@ -565,7 +565,7 @@ export default function OnboardingPage() {
 
       {/* Footer message */}
       <div className="text-center text-xs text-gray-600 font-medium">
-        FinPilot AI operates local sandboxed computations. Your metrics are encrypted on-device.
+        FinPilot AI operates secure, end-to-end encrypted computations. Your financial metrics are fully protected.
       </div>
     </main>
   );

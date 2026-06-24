@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -34,6 +35,7 @@ import {
 } from "recharts";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,6 +44,10 @@ export default function DashboardPage() {
     setRefreshing(true);
     try {
       const dbData = await getDashboardData();
+      if (dbData.profile && !dbData.profile.onboarded) {
+        router.push("/onboarding");
+        return;
+      }
       setData(dbData);
     } catch (err) {
       console.error("Failed to load dashboard statistics", err);

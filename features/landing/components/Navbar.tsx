@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { fadeVariants } from "@/lib/animations";
 
+import Link from "next/link";
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
@@ -44,9 +46,11 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Button className="rounded-full px-6 font-semibold shadow-lg shadow-primary/20">
-            Get Started
-          </Button>
+          <Link href="/login">
+            <Button className="rounded-full px-6 font-semibold shadow-lg shadow-primary/20">
+              Get Started
+            </Button>
+          </Link>
         </div>
       </div>
     </motion.header>

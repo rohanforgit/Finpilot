@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { slideUpVariants, fadeVariants } from "@/lib/animations";
 import { HeroAnimationLoop } from "./HeroAnimationLoop";
 import { Play } from "lucide-react";
+import Link from "next/link";
 
 export function Hero() {
   return (
@@ -45,9 +46,11 @@ export function Hero() {
           </motion.p>
           
           <motion.div variants={slideUpVariants} className="flex flex-col sm:flex-row gap-4">
-            <Button size="lg" className="h-14 px-8 text-base rounded-full shadow-lg shadow-primary/20 transition-transform hover:scale-105">
-              Start Planning
-            </Button>
+            <Link href="/login">
+              <Button size="lg" className="h-14 px-8 text-base rounded-full shadow-lg shadow-primary/20 transition-transform hover:scale-105">
+                Start Planning
+              </Button>
+            </Link>
             <Button size="lg" variant="outline" className="h-14 px-8 text-base rounded-full bg-white/5 border-white/10 hover:bg-white/10 backdrop-blur-md transition-transform hover:scale-105">
               <Play className="w-4 h-4 mr-2" />
               Watch Interactive Demo

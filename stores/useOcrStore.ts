@@ -1,15 +1,31 @@
 import { create } from 'zustand';
+import { Category } from '@/types/database';
+
+export interface OcrTransaction {
+  id: string;
+  merchant: string;
+  amount: number;
+  date: string;
+  category: Category;
+  is_planned: boolean;
+}
 
 interface OcrState {
-  isProcessing: boolean;
-  transactions: any[];
-  setProcessing: (isProcessing: boolean) => void;
-  setTransactions: (transactions: any[]) => void;
+  pendingTransactions: OcrTransaction[];
+  setPendingTransactions: (txs: OcrTransaction[]) => void;
+  updatePendingTransaction: (id: string, data: Partial<OcrTransaction>) => void;
+  removePendingTransaction: (id: string) => void;
+  clearPendingTransactions: () => void;
 }
 
 export const useOcrStore = create<OcrState>((set) => ({
-  isProcessing: false,
-  transactions: [],
-  setProcessing: (isProcessing) => set({ isProcessing }),
-  setTransactions: (transactions) => set({ transactions }),
+  pendingTransactions: [],
+  setPendingTransactions: (txs) => set({ pendingTransactions: txs }),
+  updatePendingTransaction: (id, data) => set((state) => ({
+    pendingTransactions: state.pendingTransactions.map(tx => tx.id === id ? { ...tx, ...data } : tx)
+  })),
+  removePendingTransaction: (id) => set((state) => ({
+    pendingTransactions: state.pendingTransactions.filter(tx => tx.id !== id)
+  })),
+  clearPendingTransactions: () => set({ pendingTransactions: [] }),
 }));

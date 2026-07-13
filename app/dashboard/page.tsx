@@ -48,7 +48,7 @@ export default function DashboardPage() {
           title="No budget plan found for this month"
           description="Create your first budget plan to unlock dashboard insights, track unexpected expenses, and get AI recommendations."
           action={
-            <Link href="/dashboard/plan">
+            <Link href="/onboarding">
               <Button className="rounded-full shadow-lg shadow-primary/20">
                 Set Up Monthly Plan
               </Button>

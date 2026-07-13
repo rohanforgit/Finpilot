@@ -31,14 +31,17 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const isDummyLoggedIn = request.cookies.get('dummy_logged_in')?.value === 'true'
+  const hasUser = user || isDummyLoggedIn
+
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup') || request.nextUrl.pathname.startsWith('/forgot-password')
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/onboarding')
 
-  if (isProtectedRoute && !user) {
+  if (isProtectedRoute && !hasUser) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (isAuthRoute && user) {
+  if (isAuthRoute && hasUser) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

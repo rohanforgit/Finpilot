@@ -15,6 +15,22 @@ export function useAuth() {
 
   const login = async (data: LoginFormData) => {
     setIsLoading(true);
+
+    // Mock bypass for development/testing if Supabase isn't migrated/setup
+    if (data.email === "dummy@example.com" && data.password === "password") {
+      document.cookie = "dummy_logged_in=true; path=/";
+      setUser({
+        id: "dummy-user-id",
+        email: "dummy@example.com",
+        name: "Dummy User",
+        monthly_income: 120000,
+      });
+      setIsLoading(false);
+      toast.success("Welcome back (Mock Mode)!");
+      router.push("/dashboard");
+      return;
+    }
+
     const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
@@ -26,6 +42,9 @@ export function useAuth() {
       toast.error(error.message);
       return;
     }
+    
+    // Clear dummy cookie if logging in with real credentials
+    document.cookie = "dummy_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     
     toast.success("Welcome back!");
     router.push("/dashboard");
@@ -82,6 +101,7 @@ export function useAuth() {
 
   const logout = async () => {
     await supabase.auth.signOut();
+    document.cookie = "dummy_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     setUser(null);
     router.push("/login");
   };

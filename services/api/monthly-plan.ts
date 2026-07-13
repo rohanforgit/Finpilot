@@ -42,3 +42,24 @@ export async function createMonthlyPlan(plan: Omit<MonthlyPlan, 'id' | 'created_
 
   return data as MonthlyPlan;
 }
+
+export async function updateMonthlyPlan(
+  planId: string, 
+  plan: Partial<Omit<MonthlyPlan, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
+): Promise<MonthlyPlan | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('monthly_plans')
+    .update(plan)
+    .eq('id', planId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating monthly plan:", error);
+    return null;
+  }
+
+  return data as MonthlyPlan;
+}
+

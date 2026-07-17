@@ -14,10 +14,17 @@ import { toast } from "sonner";
 export default function ProfilePage() {
   const { profile, isLoading, updateProfile, isUpdating } = useProfile();
   const [fullName, setFullName] = useState("");
+  const [investmentProfile, setInvestmentProfile] = useState("Moderate");
 
   useEffect(() => {
     if (profile) {
       setFullName(`${profile.first_name || ""} ${profile.last_name || ""}`.trim());
+      if (typeof window !== "undefined") {
+        const saved = window.localStorage.getItem(`investment_profile_${profile.id}`);
+        if (saved) {
+          setInvestmentProfile(saved);
+        }
+      }
     }
   }, [profile]);
 
@@ -36,6 +43,9 @@ export default function ProfilePage() {
         first_name,
         last_name,
       });
+      if (profile && typeof window !== "undefined") {
+        window.localStorage.setItem(`investment_profile_${profile.id}`, investmentProfile);
+      }
       toast.success("Profile saved successfully!");
     } catch (e: any) {
       toast.error("Failed to update profile: " + e.message);
@@ -99,6 +109,34 @@ export default function ProfilePage() {
                 disabled 
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Investment Risk Profile</label>
+              <div className="grid grid-cols-3 gap-3">
+                {(["Easy", "Moderate", "Aggressive"] as const).map((profileType) => {
+                  const isActive = investmentProfile === profileType;
+                  return (
+                    <button
+                      key={profileType}
+                      type="button"
+                      onClick={() => setInvestmentProfile(profileType)}
+                      className={`py-3 px-4 rounded-xl border text-sm font-medium transition-all ${
+                        isActive
+                          ? "bg-primary/10 border-primary text-primary shadow-lg shadow-primary/5"
+                          : "bg-white/5 border-white/10 hover:bg-white/10 text-muted-foreground"
+                      }`}
+                    >
+                      {profileType === "Easy" ? "Easy (Conservative)" : profileType}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {investmentProfile === "Easy" && "Focuses on capital protection and steady liquid investments."}
+                {investmentProfile === "Moderate" && "Balances risk with rewards by mixing bluechip and index allocations."}
+                {investmentProfile === "Aggressive" && "Maximizes long-term growth through higher equity, mid, and small cap exposure."}
+              </p>
+            </div>
             
             <div className="pt-4 flex justify-end">
               <Button onClick={handleSave} disabled={isUpdating}>
@@ -111,4 +149,3 @@ export default function ProfilePage() {
     </motion.div>
   );
 }
-

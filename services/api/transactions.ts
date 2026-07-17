@@ -34,6 +34,22 @@ export async function createTransaction(transaction: Omit<Transaction, 'id' | 'c
   return data as Transaction;
 }
 
+export async function createTransactionsBulk(transactions: Omit<Transaction, 'id' | 'created_at'>[]): Promise<Transaction[] | null> {
+  if (transactions.length === 0) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('transactions')
+    .insert(transactions)
+    .select();
+
+  if (error) {
+    console.error("Error bulk creating transactions:", error);
+    return null;
+  }
+
+  return data as Transaction[];
+}
+
 export async function getCurrentMonthSpent(userId: string): Promise<number> {
   const supabase = createClient();
   const date = new Date();

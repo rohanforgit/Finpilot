@@ -1,30 +1,27 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { fadeVariants } from "@/lib/animations";
 import { Card } from "@/components/ui/card";
-import { slideUpVariants, fadeVariants } from "@/lib/animations";
 import { Check, X } from "lucide-react";
 
 export function Comparison() {
   return (
-    <section className="py-24 relative overflow-hidden bg-white/[0.02]">
-      <div className="max-w-[1280px] mx-auto px-6">
-        <motion.div
+    <section className="py-24 relative overflow-hidden bg-background">
+      <div className="max-w-[1280px] mx-auto px-6 relative z-10">
+        <motion.div 
+          variants={fadeVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={{
-            hidden: {},
-            visible: { transition: { staggerChildren: 0.1 } },
-          }}
-          className="text-center mb-16"
+          viewport={{ once: true }}
+          className="text-center max-w-2xl mx-auto mb-16"
         >
-          <motion.h2 variants={slideUpVariants} className="text-3xl md:text-5xl font-heading font-bold mb-4">
-            Why FinPilot?
-          </motion.h2>
-          <motion.p variants={fadeVariants} className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-heading font-bold mb-4">
+            Why Choose FinPilot?
+          </h2>
+          <p className="text-muted-foreground text-sm sm:text-base">
             See how FinPilot bridges the gap between total control and automated convenience.
-          </motion.p>
+          </p>
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -42,7 +39,7 @@ export function Comparison() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
-            <Card className="p-8 h-full bg-primary/10 border-primary/30 relative transform md:-translate-y-4 shadow-2xl shadow-primary/10">
+            <Card className="p-8 h-full bg-primary/10 border-primary/30 relative transform md:-translate-y-4 shadow-2xl shadow-primary/10 overflow-visible">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">RECOMMENDED</div>
               <h3 className="text-3xl font-heading font-bold mb-6 text-center text-foreground flex items-center justify-center gap-2">
                 FinPilot

@@ -10,7 +10,7 @@ const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Monthly Plan", href: "/dashboard/plan", icon: PieChart },
   { name: "OCR Upload", href: "/dashboard/upload", icon: UploadCloud },
-  { name: "Savings Buckets", href: "/dashboard/buckets", icon: PiggyBank },
+  { name: "Savings & Invest", href: "/dashboard/buckets", icon: PiggyBank },
   { name: "AI Insights", href: "/dashboard/recommendations", icon: BrainCircuit },
 ];
 

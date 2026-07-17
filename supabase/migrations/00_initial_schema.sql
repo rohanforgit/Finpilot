@@ -81,6 +81,7 @@ ALTER TABLE public.recommendations ENABLE ROW LEVEL SECURITY;
 -- Policies
 CREATE POLICY "Users can view own profile." ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile." ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users can CRUD own monthly plans." ON public.monthly_plans FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users can CRUD own transactions." ON public.transactions FOR ALL USING (auth.uid() = user_id);
@@ -105,7 +106,8 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, email)
-  VALUES (NEW.id, NEW.email);
+  VALUES (NEW.id, NEW.email)
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

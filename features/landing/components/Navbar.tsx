@@ -4,13 +4,18 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { fadeVariants } from "@/lib/animations";
-
+import { useTheme } from "next-themes";
+import { Sun, Moon } from "lucide-react";
 import Link from "next/link";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
@@ -46,6 +51,16 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-4">
+          {mounted && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="rounded-full text-muted-foreground hover:text-foreground"
+            >
+              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </Button>
+          )}
           <Link href="/login">
             <Button className="rounded-full px-6 font-semibold shadow-lg shadow-primary/20">
               Get Started

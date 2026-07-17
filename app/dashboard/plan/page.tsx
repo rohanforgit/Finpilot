@@ -9,18 +9,23 @@ import { useTransactions } from "@/features/dashboard/hooks/useTransactions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/EmptyState";
-import { PieChart, Edit2, Save, X } from "lucide-react";
+import { PieChart, Edit2, Save, X, Info } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Category } from "@/types/database";
+import { updateTransactionCategory } from "@/services/api/transactions";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function MonthlyPlanPage() {
   const { plan, isLoading: planLoading, updatePlan, isUpdating } = useMonthlyPlan();
   const { data: transactions, isLoading: txsLoading } = useTransactions(100);
   const [isEditing, setIsEditing] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<Category | null>(null);
+  const queryClient = useQueryClient();
+
   const [editValues, setEditValues] = useState({
     essentials: "0",
     investments: "0",
@@ -120,6 +125,24 @@ export default function MonthlyPlanPage() {
     }
   };
 
+  const handleDrop = async (e: React.DragEvent, targetCategory: Category) => {
+    e.preventDefault();
+    const txId = e.dataTransfer.getData("text/plain");
+    if (!txId) return;
+
+    try {
+      const result = await updateTransactionCategory(txId, targetCategory);
+      if (result) {
+        toast.success(`Transaction moved to ${targetCategory}`);
+        queryClient.invalidateQueries();
+      } else {
+        toast.error("Failed to move transaction category");
+      }
+    } catch (err: any) {
+      toast.error("Error shifting category: " + err.message);
+    }
+  };
+
   const categoriesList: { key: "essentials" | "investments" | "savings" | "lifestyle" | null; label: Category; allocated: number; spent: number }[] = [
     { key: "essentials", label: "Essentials", allocated: plan.allocated_essentials, spent: spentByCategory.Essentials },
     { key: "lifestyle", label: "Lifestyle", allocated: plan.allocated_lifestyle, spent: spentByCategory.Lifestyle },
@@ -128,10 +151,15 @@ export default function MonthlyPlanPage() {
   ];
 
   const totalAllocated = plan.allocated_essentials + plan.allocated_investments + plan.allocated_savings + plan.allocated_lifestyle;
-  const miscAllocated = Math.max(0, plan.income - totalAllocated);
+  const unallocatedRemainder = Math.max(0, plan.income - totalAllocated);
   const miscSpent = spentByCategory.Miscellaneous;
 
-  const categories = [...categoriesList, { key: null, label: "Miscellaneous" as Category, allocated: miscAllocated, spent: miscSpent }];
+  // Miscellaneous allocated is hardcoded to 0 so unallocated remainder displays correctly in the banner
+  const categories = [...categoriesList, { key: null, label: "Miscellaneous" as Category, allocated: 0, spent: miscSpent }];
+
+  const toggleExpand = (label: Category) => {
+    setExpandedCategory(expandedCategory === label ? null : label);
+  };
 
   return (
     <motion.div initial="hidden" animate="visible" variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}>
@@ -163,19 +191,42 @@ export default function MonthlyPlanPage() {
         </TabsList>
         
         <TabsContent value="overview">
+          {/* Unallocated Money Banner */}
+          {unallocatedRemainder > 0 && (
+            <motion.div variants={slideUpVariants} className="mb-6">
+              <Card className="p-4 bg-primary/10 border-primary/20 flex items-center gap-3">
+                <Info className="w-5 h-5 text-primary shrink-0" />
+                <p className="text-sm font-medium text-foreground">
+                  Unallocated Money: <span className="font-bold text-primary">₹{unallocatedRemainder.toLocaleString()}</span> remaining of your ₹{plan.income.toLocaleString()} monthly income. Consider allocating this to Savings or Investments!
+                </p>
+              </Card>
+            </motion.div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-6">
             {categories.map((catItem, i) => {
               const { label, allocated, spent, key } = catItem;
               const percentage = allocated > 0 ? Math.round((spent / allocated) * 100) : 0;
-              const isOver = spent > allocated;
+              const isOver = allocated > 0 && spent > allocated;
 
               return (
-                <motion.div key={label} variants={slideUpVariants} custom={i}>
-                  <Card className="p-6 bg-card/40 border-white/10 hover:bg-white/5 transition-colors">
+                <motion.div 
+                  key={label} 
+                  variants={slideUpVariants} 
+                  custom={i}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => handleDrop(e, label)}
+                >
+                  <Card 
+                    onClick={() => !isEditing && toggleExpand(label)}
+                    className={`p-6 bg-card/40 border-white/10 hover:bg-white/5 transition-colors cursor-pointer select-none relative ${
+                      expandedCategory === label ? "ring-2 ring-primary/40 bg-white/5" : ""
+                    }`}
+                  >
                     <div className="flex justify-between items-center mb-4">
                       <h4 className="capitalize font-semibold text-lg">{label}</h4>
                       {isEditing && key ? (
-                        <div className="relative w-36">
+                        <div className="relative w-36" onClick={(e) => e.stopPropagation()}>
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
                           <Input 
                             type="number"
@@ -185,11 +236,16 @@ export default function MonthlyPlanPage() {
                           />
                         </div>
                       ) : (
-                        <span className="text-sm font-mono text-muted-foreground">₹{spent.toLocaleString()} / ₹{allocated.toLocaleString()}</span>
+                        <span className="text-sm font-mono text-muted-foreground">
+                          {label === "Miscellaneous" 
+                            ? `₹${spent.toLocaleString()} spent`
+                            : `₹${spent.toLocaleString()} / ₹${allocated.toLocaleString()}`
+                          }
+                        </span>
                       )}
                     </div>
                     
-                    {!isEditing && (
+                    {!isEditing && label !== "Miscellaneous" && (
                       <>
                         <Progress value={percentage > 100 ? 100 : percentage} className={`h-2 bg-white/5 mb-2 [&>div]:${isOver ? 'bg-destructive' : 'bg-primary'}`} />
                         <p className={`text-xs ${isOver ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -197,12 +253,42 @@ export default function MonthlyPlanPage() {
                         </p>
                       </>
                     )}
+                    {!isEditing && label === "Miscellaneous" && (
+                      <p className="text-xs text-muted-foreground">
+                        Drag and drop items here to classify them as miscellaneous.
+                      </p>
+                    )}
                     {isEditing && !key && (
                       <div className="text-sm text-muted-foreground mt-4">
                         Miscellaneous budget is calculated dynamically from the remaining income: 
                         <span className="text-foreground ml-1 font-semibold">
                           ₹{(plan.income - (parseFloat(editValues.essentials || "0") + parseFloat(editValues.investments || "0") + parseFloat(editValues.savings || "0") + parseFloat(editValues.lifestyle || "0"))).toLocaleString()}
                         </span>
+                      </div>
+                    )}
+
+                    {/* Drill-down transactions sub-list inside active category card */}
+                    {!isEditing && expandedCategory === label && (
+                      <div className="mt-4 pt-4 border-t border-white/5 space-y-2 max-h-60 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Transactions in {label}:</p>
+                        {transactions && transactions.filter(t => t.category === label).length > 0 ? (
+                          transactions.filter(t => t.category === label).map(t => (
+                            <div 
+                              key={t.id} 
+                              draggable
+                              onDragStart={(e) => e.dataTransfer.setData("text/plain", t.id)}
+                              className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-white/5 border border-white/5 cursor-grab active:cursor-grabbing hover:bg-white/10 transition-colors"
+                            >
+                              <div>
+                                <p className="font-medium text-foreground">{t.merchant}</p>
+                                <p className="text-[10px] text-muted-foreground">{new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
+                              </div>
+                              <span className="font-mono text-destructive font-semibold">-₹{t.amount.toLocaleString()}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-muted-foreground text-center py-4">No transactions found in this category.</p>
+                        )}
                       </div>
                     )}
                   </Card>
@@ -218,7 +304,12 @@ export default function MonthlyPlanPage() {
               <div className="divide-y divide-white/5">
                 {transactions && transactions.length > 0 ? (
                   transactions.map((tx) => (
-                    <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                    <div 
+                      key={tx.id} 
+                      draggable
+                      onDragStart={(e) => e.dataTransfer.setData("text/plain", tx.id)}
+                      className="p-4 flex items-center justify-between hover:bg-white/5 cursor-grab active:cursor-grabbing transition-colors"
+                    >
                       <div>
                         <p className="font-medium">{tx.merchant}</p>
                         <p className="text-xs text-muted-foreground">
@@ -244,4 +335,3 @@ export default function MonthlyPlanPage() {
     </motion.div>
   );
 }
-

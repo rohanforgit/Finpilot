@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-import { slideUpVariants, fadeVariants } from "@/lib/animations";
+import { slideUpVariants } from "@/lib/animations";
 import { useUserStore } from "@/stores/useUserStore";
 import { createClient } from "@/services/supabase/client";
 import { toast } from "sonner";
+import { useMonthlyPlan } from "@/features/dashboard/hooks/useMonthlyPlan";
+import { Category } from "@/types/database";
 
 interface FixedExpense {
   id: number;
@@ -26,6 +28,15 @@ export default function OnboardingPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { user, setUser } = useUserStore();
   const router = useRouter();
+
+  const { plan, isLoading: planLoading } = useMonthlyPlan();
+
+  // Redirect to dashboard if plan already exists to prevent hydration locks
+  useEffect(() => {
+    if (!planLoading && plan) {
+      router.push("/dashboard");
+    }
+  }, [plan, planLoading, router]);
 
   const addExpenseField = () => {
     setExpenses([...expenses, { id: Date.now(), name: "", amount: "" }]);
@@ -69,7 +80,29 @@ export default function OnboardingPage() {
     const supabase = createClient();
     
     const incomeVal = parseFloat(income) || 0;
-    const essentialsAlloc = expenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    const validExpenses = expenses.filter(e => e.name && parseFloat(e.amount) > 0);
+
+    const autoCategorizeExpense = (name: string): Category => {
+      const clean = name.toLowerCase();
+      if (clean.includes("sip") || clean.includes("invest") || clean.includes("fund") || clean.includes("stock") || clean.includes("equity") || clean.includes("gold")) {
+        return "Investments";
+      }
+      if (clean.includes("saving") || clean.includes("deposit") || clean.includes("emergency")) {
+        return "Savings";
+      }
+      if (clean.includes("gym") || clean.includes("netflix") || clean.includes("spotify") || clean.includes("dine") || clean.includes("restaurant") || clean.includes("movie") || clean.includes("shopping") || clean.includes("entertainment") || clean.includes("lifestyle") || clean.includes("travel")) {
+        return "Lifestyle";
+      }
+      if (clean.includes("tithe") || clean.includes("donation") || clean.includes("charity") || clean.includes("gift") || clean.includes("dad") || clean.includes("support") || clean.includes("transfer") || clean.includes("misc")) {
+        return "Miscellaneous";
+      }
+      return "Essentials";
+    };
+
+    const essentialsAlloc = validExpenses.filter(e => autoCategorizeExpense(e.name) === "Essentials").reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    const investmentsAlloc = validExpenses.filter(e => autoCategorizeExpense(e.name) === "Investments").reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    const savingsAlloc = validExpenses.filter(e => autoCategorizeExpense(e.name) === "Savings").reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    const lifestyleAlloc = validExpenses.filter(e => autoCategorizeExpense(e.name) === "Lifestyle").reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
     // 1. Update Profile
     const { error: profileError } = await supabase
@@ -104,9 +137,9 @@ export default function OnboardingPage() {
           year: currentYear,
           income: incomeVal,
           allocated_essentials: essentialsAlloc,
-          allocated_investments: 0,
-          allocated_savings: 0,
-          allocated_lifestyle: 0,
+          allocated_investments: investmentsAlloc,
+          allocated_savings: savingsAlloc,
+          allocated_lifestyle: lifestyleAlloc,
         }
       ])
       .select()
@@ -119,7 +152,6 @@ export default function OnboardingPage() {
     }
 
     // 3. Create Transactions for each fixed expense
-    const validExpenses = expenses.filter(e => e.name && parseFloat(e.amount) > 0);
     if (validExpenses.length > 0) {
       const txs = validExpenses.map(e => ({
         user_id: user.id,
@@ -127,7 +159,7 @@ export default function OnboardingPage() {
         date: new Date().toISOString(),
         merchant: e.name,
         amount: parseFloat(e.amount),
-        category: "Essentials" as const,
+        category: autoCategorizeExpense(e.name),
         status: "Recurring" as const,
         is_planned: true,
       }));
@@ -144,141 +176,143 @@ export default function OnboardingPage() {
     }
 
     setIsSaving(false);
-    toast.success("Financial plan setup successfully!");
+    toast.success("Onboarding completed successfully!");
     router.push("/dashboard");
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6 selection:bg-primary/20">
-      <div className="max-w-md w-full relative">
-        <motion.div
-          variants={fadeVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex gap-2 mb-12 justify-center"
-        >
-          {[1, 2, 3].map((i) => (
-            <div key={i} className={`h-1.5 w-12 rounded-full transition-colors duration-500 ${step >= i ? 'bg-primary' : 'bg-white/10'}`} />
-          ))}
-        </motion.div>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-background relative overflow-hidden">
+      {/* Decorative gradients */}
+      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-primary/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-emerald-500/5 blur-[120px] pointer-events-none" />
 
-        <div className="h-[400px]">
-          <AnimatePresence mode="wait">
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                <h1 className="text-3xl font-heading font-bold text-center">What's your monthly income?</h1>
-                <p className="text-center text-muted-foreground">This helps us establish your baseline budget.</p>
-                <div className="relative mt-8">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+      <AnimatePresence mode="wait">
+        {step === 1 && (
+          <motion.div
+            key="step1"
+            variants={slideUpVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="w-full max-w-md bg-card/40 border border-white/10 p-8 rounded-2xl backdrop-blur-xl shadow-2xl"
+          >
+            <h2 className="text-2xl font-bold font-heading mb-2 text-foreground">Welcome to FinPilot</h2>
+            <p className="text-sm text-muted-foreground mb-6">Let&apos;s start by setting up your monthly income capacity.</p>
+            
+            <div className="space-y-4 mb-6">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Income (₹)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">₹</span>
                   <Input 
                     type="number" 
-                    placeholder="1,20,000" 
+                    placeholder="e.g. 1,20,000" 
                     value={income}
                     onChange={(e) => setIncome(e.target.value)}
-                    className="pl-10 h-14 text-lg bg-white/5 border-white/10 text-center" 
+                    className="pl-8 bg-white/5 border-white/10 h-12 text-lg font-mono"
                   />
                 </div>
-              </motion.div>
-            )}
+              </div>
+            </div>
 
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                <h1 className="text-3xl font-heading font-bold text-center">Fixed Expenses</h1>
-                <p className="text-center text-muted-foreground">Enter your major recurring bills (Rent, EMIs, Utilities).</p>
-                <div className="space-y-3 mt-8 overflow-y-auto max-h-[250px] pr-2">
-                  {expenses.map((e) => (
-                    <div key={e.id} className="flex gap-2 items-center">
-                      <Input 
-                        placeholder="Expense Name (e.g. Rent)" 
-                        value={e.name}
-                        onChange={(val) => updateExpense(e.id, "name", val.target.value)}
-                        className="h-12 bg-white/5 border-white/10 flex-[2]" 
-                      />
-                      <div className="relative flex-1">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
-                        <Input 
-                          type="number"
-                          placeholder="Amount" 
-                          value={e.amount}
-                          onChange={(val) => updateExpense(e.id, "amount", val.target.value)}
-                          className="pl-7 h-12 bg-white/5 border-white/10" 
-                        />
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive hover:bg-destructive/10 h-12 w-12" 
-                        onClick={() => removeExpense(e.id)}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  ))}
+            <Button onClick={nextStep} className="w-full rounded-full h-11 shadow-lg shadow-primary/20">
+              Continue
+            </Button>
+          </motion.div>
+        )}
+
+        {step === 2 && (
+          <motion.div
+            key="step2"
+            variants={slideUpVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="w-full max-w-xl bg-card/40 border border-white/10 p-8 rounded-2xl backdrop-blur-xl shadow-2xl"
+          >
+            <h2 className="text-2xl font-bold font-heading mb-2 text-foreground">Fixed Expenses</h2>
+            <p className="text-sm text-muted-foreground mb-6">Enter details of your fixed recurring obligations (e.g. Rent, Loans, SIPs).</p>
+            
+            <div className="space-y-4 mb-6 max-h-[350px] overflow-y-auto pr-2">
+              {expenses.map((exp) => (
+                <div key={exp.id} className="flex gap-3 items-center">
+                  <Input 
+                    placeholder="Expense Name (e.g. Rent)" 
+                    value={exp.name}
+                    onChange={(e) => updateExpense(exp.id, "name", e.target.value)}
+                    className="bg-white/5 border-white/10 flex-1"
+                  />
+                  <div className="relative w-36">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">₹</span>
+                    <Input 
+                      type="number"
+                      placeholder="Amount" 
+                      value={exp.amount}
+                      onChange={(e) => updateExpense(exp.id, "amount", e.target.value)}
+                      className="pl-6 bg-white/5 border-white/10 font-mono"
+                    />
+                  </div>
                   <Button 
                     variant="ghost" 
-                    className="w-full text-primary hover:bg-primary/10 hover:text-primary mt-2"
-                    onClick={addExpenseField}
+                    size="sm" 
+                    onClick={() => removeExpense(exp.id)}
+                    className="text-muted-foreground hover:text-destructive text-xs h-9"
                   >
-                    + Add Another
+                    Remove
                   </Button>
                 </div>
-              </motion.div>
-            )}
+              ))}
+            </div>
 
-            {step === 3 && (
-              <motion.div
-                key="step3"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6 text-center"
-              >
-                <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-4xl">🎉</span>
-                </div>
-                <h1 className="text-3xl font-heading font-bold text-center">You're all set!</h1>
-                <p className="text-muted-foreground">We've structured your initial plan. Let AI guide you from here.</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            <div className="flex gap-4">
+              <Button variant="outline" onClick={addExpenseField} className="rounded-full flex-1">
+                Add Expense
+              </Button>
+              <Button onClick={nextStep} className="rounded-full flex-1 shadow-lg shadow-primary/20">
+                Continue
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
-        <motion.div variants={slideUpVariants} initial="hidden" animate="visible" className="mt-8 flex gap-4">
-          {step > 1 && (
-            <Button 
-              variant="outline" 
-              className="flex-1 h-12 bg-white/5 border-white/10" 
-              onClick={() => setStep(step - 1)}
-              disabled={isSaving}
-            >
-              Back
-            </Button>
-          )}
-          <Button 
-            className="flex-[2] h-12 text-base" 
-            onClick={nextStep}
-            disabled={isSaving}
+        {step === 3 && (
+          <motion.div
+            key="step3"
+            variants={slideUpVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="w-full max-w-md bg-card/40 border border-white/10 p-8 rounded-2xl backdrop-blur-xl shadow-2xl text-center"
           >
-            {isSaving ? "Saving..." : step === 3 ? "Go to Dashboard" : "Continue"}
-          </Button>
-        </motion.div>
-      </div>
+            <h2 className="text-2xl font-bold font-heading mb-2 text-foreground font-medium">Ready to Analyze!</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              We&apos;ll auto-categorize your recurring expenses and build your custom budget dashboard.
+            </p>
+
+            <div className="py-6 border-y border-white/5 mb-8">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Total Income:</span>
+                <span className="font-bold text-foreground font-mono">₹{parseFloat(income).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Fixed Expenses:</span>
+                <span className="font-bold text-destructive font-mono">
+                  -₹{expenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <Button variant="outline" onClick={() => setStep(2)} className="rounded-full flex-1">
+                Back
+              </Button>
+              <Button onClick={nextStep} disabled={isSaving} className="rounded-full flex-1 shadow-lg shadow-primary/20">
+                {isSaving ? "Initializing..." : "Finish Setup"}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-

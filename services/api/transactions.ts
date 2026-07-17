@@ -1,5 +1,5 @@
 import { createClient } from '../supabase/client';
-import { Transaction } from '@/types/database';
+import { Transaction, Category } from '@/types/database';
 
 export async function getRecentTransactions(userId: string, limit = 10): Promise<Transaction[]> {
   const supabase = createClient();
@@ -69,5 +69,22 @@ export async function getCurrentMonthSpent(userId: string): Promise<number> {
   }
 
   return data ? data.reduce((sum, tx) => sum + Number(tx.amount), 0) : 0;
+}
+
+export async function updateTransactionCategory(txId: string, category: Category): Promise<Transaction | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('transactions')
+    .update({ category })
+    .eq('id', txId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating transaction category:", error);
+    return null;
+  }
+
+  return data as Transaction;
 }
 
